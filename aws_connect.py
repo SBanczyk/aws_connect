@@ -27,7 +27,7 @@ def aws_connect(config_file_path: str, action: str):
         elif action == "state":
             print(instance.state)
         else:
-            print("Available aruments: start, stop, state")
+            print("Available actions: start, stop, state")
     except botocore.exceptions.ClientError as err:
         print(err)
         return

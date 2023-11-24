@@ -1,6 +1,7 @@
 import boto3
 import configparser
 import botocore.exceptions
+import re
 from fastapi import FastAPI, HTTPException
 
 
@@ -25,33 +26,31 @@ async def status(instance_id: str):
         instance = ec2.Instance(instance_id)
         return instance.state
     except botocore.exceptions.ClientError as err:
-        if err.response["Error"]["Code"] == "InvalidInstanceID.Malformed":
-            raise HTTPException(status_code=404, detail="Incorrect instance id")
+        if "InvalidInstanceID" in err.response["Error"]["Code"]:
+            raise HTTPException(status_code=404, detail="Invalid instance id")
         else:
-            return err
+            raise err
 
 
-@app.get("/instances/{instance_id}/start")
+@app.post("/instances/{instance_id}/start", status_code=204)
 async def start(instance_id: str):
     try:
         instance = ec2.Instance(instance_id)
         instance.start()
-        raise HTTPException(status_code=204)
     except botocore.exceptions.ClientError as err:
-        if err.response["Error"]["Code"] == "InvalidInstanceID.Malformed":
-            raise HTTPException(status_code=404, detail="Incorrect instance id")
+        if "InvalidInstanceID" in err.response["Error"]["Code"]:
+            raise HTTPException(status_code=404, detail="Invalid instance id")
         else:
-            return err
+            raise err
 
 
-@app.get("/instances/{instance_id}/stop")
+@app.post("/instances/{instance_id}/stop", status_code=204)
 async def stop(instance_id: str):
     try:
         instance = ec2.Instance(instance_id)
         instance.stop()
-        raise HTTPException(status_code=204)
     except botocore.exceptions.ClientError as err:
-        if err.response["Error"]["Code"] == "InvalidInstanceID.Malformed":
-            raise HTTPException(status_code=404, detail="Incorrect instance id")
+        if "InvalidInstanceID" in err.response["Error"]["Code"]:
+            raise HTTPException(status_code=404, detail="Invalid instance id")
         else:
-            return err
+            raise err

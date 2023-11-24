@@ -1,5 +1,3 @@
 # aws_connect
-Function that connects user to aws server and performs one of three actions: start server, stop server or check current server state.
-It takes 2 arguments: path to the `.ini` file with all neccessery credentials and action to perform on the server.
-All credentials in the `.ini` file must be in the section `[CREDENTIALS]`.  
-Example: `python ./aws_connect <path to .ini file> <action>`
+Function that connects user to AWS server and performs one of three actions using FastAPI: start server, stop server or check current server state.
+All credentials must be in the `config.ini` file (located in the same directory as script) in `[CREDENTIALS]` section.

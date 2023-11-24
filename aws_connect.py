@@ -1,7 +1,6 @@
 import boto3
 import configparser
 import botocore.exceptions
-import re
 from fastapi import FastAPI, HTTPException
 
 

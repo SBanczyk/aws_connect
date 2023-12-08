@@ -8,8 +8,6 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.10"
 boto3 = "^1.33.10"
-configparser = "^6.0.0"
-botocore = "^1.33.10"
 fastapi = "^0.104.1"
 
 

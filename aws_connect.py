@@ -9,14 +9,16 @@ config = configparser.ConfigParser()
 config.read("config.ini")
 try:
     session = boto3.Session(
-        aws_access_key_id=config['CREDENTIALS']['aws_access_key_id'],
-        aws_secret_access_key=config['CREDENTIALS']['aws_secret_access_key'],
-        region_name=config['CREDENTIALS']['region_name']
+        aws_access_key_id=config["CREDENTIALS"]["aws_access_key_id"],
+        aws_secret_access_key=config["CREDENTIALS"]["aws_secret_access_key"],
+        region_name=config["CREDENTIALS"]["region_name"],
     )
-    ec2 = session.resource('ec2')
+    ec2 = session.resource("ec2")
 except KeyError:
-    print(f"config.ini does not exist, is of incorrect type, has incorrect structure or contains "
-          f"incorrect credential names")
+    print(
+        "config.ini does not exist, is of incorrect type, has incorrect structure or contains "
+        "incorrect credential names"
+    )
 
 
 @app.get("/instances/{instance_id}/status")

@@ -1,0 +1,12 @@
+name: CI
+on: [ push, pull_request ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: chartboost/ruff-action@v1
+      - name: Run Ruff linter
+        run: ruff check --fix
+      - name: Run Ruff
+        run: ruff format --check

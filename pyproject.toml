@@ -11,6 +11,9 @@ boto3 = "^1.33.10"
 fastapi = "^0.104.1"
 
 
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.1.8"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

@@ -1,4 +1,4 @@
-name: Ruff
+name: Ruffd5bf055afc09
 on:
   push:
     branches: [master]
@@ -9,6 +9,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: chartboost/ruff-action@v1
+        with:
+          version: 0.1.8
       - uses: chartboost/ruff-action@v1
         with:
           args: format --check
+          version: 0.1.8

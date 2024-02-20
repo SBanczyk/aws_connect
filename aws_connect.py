@@ -28,15 +28,8 @@ for db_connect_attempts in range(10):
         time.sleep(1)
     else:
         break
-with db_connect.cursor() as cursor:
-    cursor.execute("SELECT * from users")
-    row = cursor.fetchone()
-    while row is not None:
-        user_db = {
-            row[0]: {"username": row[0], "hashed_password": row[1], "disabled": row[2]}
-        }
-        row = cursor.fetchone()
-db_connect.close()
+
+# db_connect.close()
 
 
 class Token(BaseModel):
@@ -70,14 +63,17 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 
-def get_user(db, username: str):
-    if username in db:
-        user_dict = db[username]
-        return UserInDB(**user_dict)
+def get_user(username: str):
+    with db_connect.cursor() as cursor:
+        cursor.execute("SELECT * from users where username=%s", (username,))
+        row = cursor.fetchone()
+        if row is not None:
+            user_dict = {"username": row[0], "hashed_password": row[1], "disabled": row[2]}
+            return UserInDB(**user_dict)
 
 
-def authenticate_user(db, username: str, password: str):
-    user = get_user(db, username)
+def authenticate_user(username: str, password: str):
+    user = get_user(username)
     if not user:
         return False
     if not verify_password(password, user.hashed_password):
@@ -110,7 +106,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         token_data = TokenData(username=username)
     except JWTError:
         raise credentials_exception
-    user = get_user(user_db, username=token_data.username)
+    user = get_user(username=token_data.username)
     if user is None:
         raise credentials_exception
     return user
@@ -136,7 +132,7 @@ ec2 = session.resource("ec2")
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ) -> Token:
-    user = authenticate_user(user_db, form_data.username, form_data.password)
+    user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
             status_code=state.HTTP_401_UNAUTHORIZED,
@@ -155,13 +151,6 @@ async def read_users_me(
     current_user: Annotated[User, Depends(get_current_active_user)],
 ):
     return current_user
-
-
-@app.get("/users/me/items/")
-async def read_own_items(
-    current_user: Annotated[User, Depends(get_current_active_user)],
-):
-    return [{"item_id": "Foo", "owner": current_user.username}]
 
 
 @app.get("/instances/{instance_id}/state")

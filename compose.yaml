@@ -1,8 +1,27 @@
 services:
+  db:
+    image: postgres
+    restart: always
+    shm_size: 128mb
+    environment:
+      - POSTGRES_PASSWORD=${DB_PWD}
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    container_name: aws_connect_db
   web:
     build: .
-    ports:
-      - "8000:8000"
     volumes:
       - ./config.ini:/usr/src/app/config.ini
     image: "aws_connect:latest"
+    ports:
+      - "8000:8000"
+    container_name: aws_connect
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - REGION_NAME=${REGION_NAME}
+      - DB_IP=${DB_IP}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PWD=${DB_PWD}

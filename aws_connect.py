@@ -21,7 +21,7 @@ for db_connect_attempts in range(10):
             host=os.environ["DB_IP"],
             database=os.environ["DB_NAME"],
             user=os.environ["DB_USER"],
-            password=os.environ["DB_PWD"]
+            password=os.environ["DB_PWD"],
         )
     except psycopg2.OperationalError as error:
         print(error)
@@ -33,11 +33,7 @@ with db_connect.cursor() as cursor:
     row = cursor.fetchone()
     while row is not None:
         user_db = {
-            row[0]: {
-                "username": row[0],
-                "hashed_password": row[1],
-                "disabled": row[2]
-            }
+            row[0]: {"username": row[0], "hashed_password": row[1], "disabled": row[2]}
         }
         row = cursor.fetchone()
 db_connect.close()
@@ -121,7 +117,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
 
 
 async def get_current_active_user(
-    current_user: Annotated[User, Depends(get_current_user)]
+    current_user: Annotated[User, Depends(get_current_user)],
 ):
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
@@ -138,7 +134,7 @@ ec2 = session.resource("ec2")
 
 @app.post("/token")
 async def login_for_access_token(
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ) -> Token:
     user = authenticate_user(user_db, form_data.username, form_data.password)
     if not user:
@@ -155,17 +151,23 @@ async def login_for_access_token(
 
 
 @app.get("/users/me/", response_model=User)
-async def read_users_me(current_user: Annotated[User, Depends(get_current_active_user)]):
+async def read_users_me(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+):
     return current_user
 
 
 @app.get("/users/me/items/")
-async def read_own_items(current_user: Annotated[User, Depends(get_current_active_user)]):
+async def read_own_items(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+):
     return [{"item_id": "Foo", "owner": current_user.username}]
 
 
 @app.get("/instances/{instance_id}/state")
-async def state(current_user: Annotated[User, Depends(get_current_active_user)], instance_id: str):
+async def state(
+    current_user: Annotated[User, Depends(get_current_active_user)], instance_id: str
+):
     try:
         instance = ec2.Instance(instance_id)
         return instance.state
@@ -177,7 +179,9 @@ async def state(current_user: Annotated[User, Depends(get_current_active_user)],
 
 
 @app.post("/instances/{instance_id}/start", status_code=204)
-async def start(current_user: Annotated[User, Depends(get_current_active_user)], instance_id: str):
+async def start(
+    current_user: Annotated[User, Depends(get_current_active_user)], instance_id: str
+):
     try:
         instance = ec2.Instance(instance_id)
         instance.start()
@@ -189,7 +193,9 @@ async def start(current_user: Annotated[User, Depends(get_current_active_user)],
 
 
 @app.post("/instances/{instance_id}/stop", status_code=204)
-async def stop(current_user: Annotated[User, Depends(get_current_active_user)], instance_id: str):
+async def stop(
+    current_user: Annotated[User, Depends(get_current_active_user)], instance_id: str
+):
     try:
         instance = ec2.Instance(instance_id)
         instance.stop()

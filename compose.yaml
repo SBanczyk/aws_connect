@@ -4,7 +4,7 @@ services:
     restart: always
     shm_size: 128mb
     environment:
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_PASSWORD=${DB_PWD}
     volumes:
       - ./pgdata:/var/lib/postgresql/data
     container_name: aws_connect_db

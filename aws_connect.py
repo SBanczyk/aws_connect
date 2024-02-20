@@ -68,7 +68,11 @@ def get_user(username: str):
         cursor.execute("SELECT * from users where username=%s", (username,))
         row = cursor.fetchone()
         if row is not None:
-            user_dict = {"username": row[0], "hashed_password": row[1], "disabled": row[2]}
+            user_dict = {
+                "username": row[0],
+                "hashed_password": row[1],
+                "disabled": row[2],
+            }
             return UserInDB(**user_dict)
 
 

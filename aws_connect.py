@@ -42,7 +42,7 @@ class TokenData(BaseModel):
 class User(BaseModel):
     username: str
     disabled: bool | None = None
-    resource_group: str
+    resource_group: list
 
 
 class UserInDB(User):
@@ -65,7 +65,7 @@ def get_password_hash(password):
 def get_user(username: str):
     with db_connect.cursor() as cursor:
         cursor.execute(
-            "select U.username, U.hashed_password, U.disabled, RG.resource_group_name "
+            "select U.username, U.hashed_password, U.disabled "
             "from users U join users_roles UR on U.username = UR.username "
             "join roles R on UR.role_name = R.role_name "
             "join roles_resource_groups RSG on R.role_name = RSG.role_name "
@@ -79,9 +79,23 @@ def get_user(username: str):
                 "username": row[0],
                 "hashed_password": row[1],
                 "disabled": row[2],
-                "resource_group": row[3],
+                "resource_group": []
             }
-            return UserInDB(**user_dict)
+        cursor.execute(
+            "select RG.resource_group_name "
+            "from users U join users_roles UR on U.username = UR.username "
+            "join roles R on UR.role_name = R.role_name "
+            "join roles_resource_groups RSG on R.role_name = RSG.role_name "
+            "join resource_groups RG on RSG.resource_group = RG.resource_group_name "
+            "where U.username=%s",
+            (username,),
+        )
+        row = cursor.fetchone()
+        while row is not None:
+            user_dict["resource_group"].append(row[0])
+            row = cursor.fetchone()
+        print(user_dict)
+        return UserInDB(**user_dict)
 
 
 def authenticate_user(username: str, password: str):
@@ -173,7 +187,7 @@ async def state(
         instance = ec2.Instance(instance_id)
         for tag in instance.tags:
             if tag["Key"] == "resource_group":
-                if tag["Value"] != current_user.resource_group:
+                if tag["Value"] not in current_user.resource_group:
                     raise HTTPException(status_code=403)
                 else:
                     return instance.state
@@ -192,7 +206,7 @@ async def start(
         instance = ec2.Instance(instance_id)
         for tag in instance.tags:
             if tag["Key"] == "resource_group":
-                if tag["Value"] != current_user.resource_group:
+                if tag["Value"] not in current_user.resource_group:
                     raise HTTPException(status_code=403)
                 else:
                     instance.start()
@@ -211,7 +225,7 @@ async def stop(
         instance = ec2.Instance(instance_id)
         for tag in instance.tags:
             if tag["Key"] == "resource_group":
-                if tag["Value"] != current_user.resource_group:
+                if tag["Value"] not in current_user.resource_group:
                     raise HTTPException(status_code=403)
                 else:
                     instance.stop()

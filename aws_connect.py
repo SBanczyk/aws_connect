@@ -171,11 +171,10 @@ async def state(
 ):
     try:
         instance = ec2.Instance(instance_id)
-        current_user_resource_group = current_user.resource_group
         tags_list = instance.tags
         for tag in tags_list:
             if tag["Key"] == "resource_group":
-                if tag["Value"] != current_user_resource_group:
+                if tag["Value"] != current_user.resource_group:
                     raise HTTPException(status_code=403)
                 else:
                     return instance.state
@@ -192,11 +191,10 @@ async def start(
 ):
     try:
         instance = ec2.Instance(instance_id)
-        current_user_resource_group = current_user.resource_group
         tags_list = instance.tags
         for tag in tags_list:
             if tag["Key"] == "resource_group":
-                if tag["Value"] != current_user_resource_group:
+                if tag["Value"] != current_user.resource_group:
                     raise HTTPException(status_code=403)
                 else:
                     instance.start()
@@ -213,11 +211,10 @@ async def stop(
 ):
     try:
         instance = ec2.Instance(instance_id)
-        current_user_resource_group = current_user.resource_group
         tags_list = instance.tags
         for tag in tags_list:
             if tag["Key"] == "resource_group":
-                if tag["Value"] != current_user_resource_group:
+                if tag["Value"] != current_user.resource_group:
                     raise HTTPException(status_code=403)
                 else:
                     instance.stop()

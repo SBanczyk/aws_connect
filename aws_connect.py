@@ -29,8 +29,6 @@ for db_connect_attempts in range(10):
     else:
         break
 
-# db_connect.close()
-
 
 class Token(BaseModel):
     access_token: str
@@ -44,6 +42,7 @@ class TokenData(BaseModel):
 class User(BaseModel):
     username: str
     disabled: bool | None = None
+    resource_group: str
 
 
 class UserInDB(User):
@@ -65,13 +64,22 @@ def get_password_hash(password):
 
 def get_user(username: str):
     with db_connect.cursor() as cursor:
-        cursor.execute("SELECT * from users where username=%s", (username,))
+        cursor.execute(
+            "select U.username, U.hashed_password, U.disabled, RG.resource_group_name "
+            "from users U join users_roles UR on U.username = UR.username "
+            "join roles R on UR.role_name = R.role_name "
+            "join roles_resource_groups RSG on R.role_name = RSG.role_name "
+            "join resource_groups RG on RSG.resource_group = RG.resource_group_name "
+            "where U.username=%s",
+            (username,),
+        )
         row = cursor.fetchone()
         if row is not None:
             user_dict = {
                 "username": row[0],
                 "hashed_password": row[1],
                 "disabled": row[2],
+                "resource_group": row[3],
             }
             return UserInDB(**user_dict)
 
@@ -163,7 +171,14 @@ async def state(
 ):
     try:
         instance = ec2.Instance(instance_id)
-        return instance.state
+        current_user_resource_group = current_user.resource_group
+        tags_list = instance.tags
+        for tag in tags_list:
+            if tag["Key"] == "resource_group":
+                if tag["Value"] != current_user_resource_group:
+                    raise HTTPException(status_code=403)
+                else:
+                    return instance.state
     except botocore.exceptions.ClientError as err:
         if "InvalidInstanceID" in err.response["Error"]["Code"]:
             raise HTTPException(status_code=404, detail="Invalid instance id")
@@ -177,7 +192,14 @@ async def start(
 ):
     try:
         instance = ec2.Instance(instance_id)
-        instance.start()
+        current_user_resource_group = current_user.resource_group
+        tags_list = instance.tags
+        for tag in tags_list:
+            if tag["Key"] == "resource_group":
+                if tag["Value"] != current_user_resource_group:
+                    raise HTTPException(status_code=403)
+                else:
+                    instance.start()
     except botocore.exceptions.ClientError as err:
         if "InvalidInstanceID" in err.response["Error"]["Code"]:
             raise HTTPException(status_code=404, detail="Invalid instance id")
@@ -191,7 +213,14 @@ async def stop(
 ):
     try:
         instance = ec2.Instance(instance_id)
-        instance.stop()
+        current_user_resource_group = current_user.resource_group
+        tags_list = instance.tags
+        for tag in tags_list:
+            if tag["Key"] == "resource_group":
+                if tag["Value"] != current_user_resource_group:
+                    raise HTTPException(status_code=403)
+                else:
+                    instance.stop()
     except botocore.exceptions.ClientError as err:
         if "InvalidInstanceID" in err.response["Error"]["Code"]:
             raise HTTPException(status_code=404, detail="Invalid instance id")

@@ -79,7 +79,7 @@ def get_user(username: str):
                 "username": row[0],
                 "hashed_password": row[1],
                 "disabled": row[2],
-                "resource_group": []
+                "resource_group": [],
             }
         cursor.execute(
             "select RG.resource_group_name "

@@ -80,7 +80,8 @@ def get_user(username: str):
             "from roles R join users_roles UR on UR.role_name = R.role_name "
             "join roles_resource_groups RSG on R.role_name = RSG.role_name "
             "join resource_groups RG on RSG.resource_group = RG.resource_group_name "
-            "where UR.username=%s", (username,),
+            "where UR.username=%s",
+            (username,),
         )
         row = cursor.fetchone()
         while row is not None:

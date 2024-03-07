@@ -42,7 +42,7 @@ class TokenData(BaseModel):
 class User(BaseModel):
     username: str
     disabled: bool | None = None
-    resource_group: list
+    resource_groups: list
 
 
 class UserInDB(User):
@@ -64,37 +64,28 @@ def get_password_hash(password):
 
 def get_user(username: str):
     with db_connect.cursor() as cursor:
-        cursor.execute(
-            "select U.username, U.hashed_password, U.disabled "
-            "from users U join users_roles UR on U.username = UR.username "
-            "join roles R on UR.role_name = R.role_name "
-            "join roles_resource_groups RSG on R.role_name = RSG.role_name "
-            "join resource_groups RG on RSG.resource_group = RG.resource_group_name "
-            "where U.username=%s",
-            (username,),
-        )
+        cursor.execute("SELECT * from users where username=%s", (username,))
         row = cursor.fetchone()
         if row is not None:
             user_dict = {
                 "username": row[0],
                 "hashed_password": row[1],
                 "disabled": row[2],
-                "resource_group": [],
+                "resource_groups": [],
             }
+        else:
+            return
         cursor.execute(
             "select RG.resource_group_name "
-            "from users U join users_roles UR on U.username = UR.username "
-            "join roles R on UR.role_name = R.role_name "
+            "from roles R join users_roles UR on UR.role_name = R.role_name "
             "join roles_resource_groups RSG on R.role_name = RSG.role_name "
             "join resource_groups RG on RSG.resource_group = RG.resource_group_name "
-            "where U.username=%s",
-            (username,),
+            "where UR.username=%s", (username,),
         )
         row = cursor.fetchone()
         while row is not None:
-            user_dict["resource_group"].append(row[0])
+            user_dict["resource_groups"].append(row[0])
             row = cursor.fetchone()
-        print(user_dict)
         return UserInDB(**user_dict)
 
 
@@ -146,6 +137,17 @@ async def get_current_active_user(
     return current_user
 
 
+def user_in_resource_groups(
+    current_user: Annotated[User, Depends(get_current_active_user)], instance
+):
+    for tag in instance.tags:
+        if tag["Key"] == "resource_group":
+            if tag["Value"] not in current_user.resource_groups:
+                return False
+            else:
+                return True
+
+
 session = boto3.Session(
     aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
     aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
@@ -161,7 +163,7 @@ async def login_for_access_token(
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
-            status_code=state.HTTP_401_UNAUTHORIZED,
+            status_code=401,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
@@ -185,12 +187,10 @@ async def state(
 ):
     try:
         instance = ec2.Instance(instance_id)
-        for tag in instance.tags:
-            if tag["Key"] == "resource_group":
-                if tag["Value"] not in current_user.resource_group:
-                    raise HTTPException(status_code=403)
-                else:
-                    return instance.state
+        if not user_in_resource_groups(current_user, instance):
+            raise HTTPException(status_code=403)
+        else:
+            return instance.state
     except botocore.exceptions.ClientError as err:
         if "InvalidInstanceID" in err.response["Error"]["Code"]:
             raise HTTPException(status_code=404, detail="Invalid instance id")
@@ -204,12 +204,10 @@ async def start(
 ):
     try:
         instance = ec2.Instance(instance_id)
-        for tag in instance.tags:
-            if tag["Key"] == "resource_group":
-                if tag["Value"] not in current_user.resource_group:
-                    raise HTTPException(status_code=403)
-                else:
-                    instance.start()
+        if not user_in_resource_groups(current_user, instance):
+            raise HTTPException(status_code=403)
+        else:
+            instance.start()
     except botocore.exceptions.ClientError as err:
         if "InvalidInstanceID" in err.response["Error"]["Code"]:
             raise HTTPException(status_code=404, detail="Invalid instance id")
@@ -223,12 +221,10 @@ async def stop(
 ):
     try:
         instance = ec2.Instance(instance_id)
-        for tag in instance.tags:
-            if tag["Key"] == "resource_group":
-                if tag["Value"] not in current_user.resource_group:
-                    raise HTTPException(status_code=403)
-                else:
-                    instance.stop()
+        if not user_in_resource_groups(current_user, instance):
+            raise HTTPException(status_code=403)
+        else:
+            instance.stop()
     except botocore.exceptions.ClientError as err:
         if "InvalidInstanceID" in err.response["Error"]["Code"]:
             raise HTTPException(status_code=404, detail="Invalid instance id")

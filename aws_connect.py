@@ -134,13 +134,13 @@ async def get_current_active_user(
     current_user: Annotated[User, Depends(get_current_user)],
 ):
     if current_user.disabled:
-        raise HTTPException(status_code=400, detail="Inactive user")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user"
+        )
     return current_user
 
 
-def user_in_resource_groups(
-    current_user: Annotated[User, Depends(get_current_active_user)], instance
-):
+def user_in_resource_groups(current_user, instance):
     for tag in instance.tags:
         if tag["Key"] == "resource_group":
             if tag["Value"] not in current_user.resource_groups:
@@ -164,7 +164,7 @@ async def login_for_access_token(
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
-            status_code=401,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
@@ -189,45 +189,51 @@ async def state(
     try:
         instance = ec2.Instance(instance_id)
         if not user_in_resource_groups(current_user, instance):
-            raise HTTPException(status_code=403)
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
         else:
             return instance.state
     except botocore.exceptions.ClientError as err:
         if "InvalidInstanceID" in err.response["Error"]["Code"]:
-            raise HTTPException(status_code=404, detail="Invalid instance id")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Invalid instance id"
+            )
         else:
             raise err
 
 
-@app.post("/instances/{instance_id}/start", status_code=204)
+@app.post("/instances/{instance_id}/start", status_code=status.HTTP_204_NO_CONTENT)
 async def start(
     current_user: Annotated[User, Depends(get_current_active_user)], instance_id: str
 ):
     try:
         instance = ec2.Instance(instance_id)
         if not user_in_resource_groups(current_user, instance):
-            raise HTTPException(status_code=403)
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
         else:
             instance.start()
     except botocore.exceptions.ClientError as err:
         if "InvalidInstanceID" in err.response["Error"]["Code"]:
-            raise HTTPException(status_code=404, detail="Invalid instance id")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Invalid instance id"
+            )
         else:
             raise err
 
 
-@app.post("/instances/{instance_id}/stop", status_code=204)
+@app.post("/instances/{instance_id}/stop", status_code=status.HTTP_204_NO_CONTENT)
 async def stop(
     current_user: Annotated[User, Depends(get_current_active_user)], instance_id: str
 ):
     try:
         instance = ec2.Instance(instance_id)
         if not user_in_resource_groups(current_user, instance):
-            raise HTTPException(status_code=403)
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
         else:
             instance.stop()
     except botocore.exceptions.ClientError as err:
         if "InvalidInstanceID" in err.response["Error"]["Code"]:
-            raise HTTPException(status_code=404, detail="Invalid instance id")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Invalid instance id"
+            )
         else:
             raise err

@@ -1,10 +1,10 @@
+import aws_connect_log_pb2
 import base64
 import os
 import time
 import boto3
 import botocore.exceptions
 import psycopg2
-import aws_connect_log_pb2
 from fastapi import FastAPI, HTTPException, Depends, status
 from typing import Annotated
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm

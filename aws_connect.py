@@ -1,3 +1,5 @@
+import aws_connect_log_pb2
+import base64
 import os
 import time
 import boto3
@@ -149,6 +151,28 @@ def user_in_resource_groups(current_user, instance):
                 return True
 
 
+def serialize(current_user, action, instance_id):
+    audit = aws_connect_log_pb2.AuditLog()
+    audit.timestamp.GetCurrentTime()
+    audit.user = current_user.username
+    if action == "stop":
+        audit.action = aws_connect_log_pb2.AuditLog.Action.STOP
+    elif action == "start":
+        audit.action = aws_connect_log_pb2.AuditLog.Action.START
+    audit.instance_id = instance_id
+    encoded_audit = base64.b64encode(audit.SerializeToString()).decode("ascii")
+    sqs = session.resource("sqs")
+    queue = sqs.get_queue_by_name(QueueName="sqs_audit_log.fifo")
+    queue.send_message(
+        MessageBody=encoded_audit,
+        MessageGroupId="audit_log",
+        MessageDeduplicationId=str(time.time_ns()),
+        MessageAttributes={
+            "origin": {"StringValue": "aws_connect", "DataType": "String"}
+        },
+    )
+
+
 session = boto3.Session(
     aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
     aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
@@ -218,6 +242,8 @@ async def start(
             )
         else:
             raise err
+    else:
+        serialize(current_user, "start", instance_id)
 
 
 @app.post("/instances/{instance_id}/stop", status_code=status.HTTP_204_NO_CONTENT)
@@ -237,3 +263,5 @@ async def stop(
             )
         else:
             raise err
+    else:
+        serialize(current_user, "stop", instance_id)

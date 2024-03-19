@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package aws_connect;
+import "google/protobuf/timestamp.proto";
+message AuditLog {
+  google.protobuf.Timestamp timestamp = 1;
+  string user = 2;
+
+    enum Action {
+    STOP = 0;
+    START = 1;
+  }
+
+  Action action = 3;
+  string instance_id = 4;
+}
